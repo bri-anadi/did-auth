@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DID & Verifiable Credentials Demo</title>
+  <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+  <link href="https://fonts.cdnfonts.com/css/satoshi" rel="stylesheet">
+  <style>
+    * {
+      font-family: 'Satoshi', sans-serif;
+    }
+
+    .fade-enter {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+
+    .fade-enter-active {
+      opacity: 1;
+      transform: translateY(0);
+      transition: opacity 300ms, transform 300ms;
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 50;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.5);
+    }
+
+    .modal-content {
+      position: relative;
+      background-color: #fefefe;
+      margin: 15% auto;
+      padding: 20px;
+      border-radius: 8px;
+      width: 80%;
+      max-width: 500px;
+      animation: modalSlide 0.3s ease-out;
+    }
+
+    @keyframes modalSlide {
+      from {
+        transform: translateY(-100px);
+        opacity: 0;
+      }
+
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+
+    .close {
+      position: absolute;
+      right: 20px;
+      top: 10px;
+      font-size: 28px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .close:hover {
+      color: #666;
+    }
+  </style>
+</head>
+
+<body class="bg-gray-50">
+  <div class="mx-auto max-w-screen-xl px-4 py-8 sm:px-6 lg:px-8">
+    <h1 class="text-2xl font-bold text-gray-900 text-center mb-8">Digital Identity Management</h1>
+
+    <div id="authSection">
+      <!-- Create Identity Section -->
+      <div class="rounded-lg bg-white p-8 border lg:col-span-3 lg:p-12 mb-6">
+        <h2 class="text-lg font-medium text-gray-900 mb-4">Create Identity</h2>
+        <form id="createIdentityForm" class="space-y-4">
+          <div>
+            <label class="text-sm text-gray-700">Username</label>
+            <input type="text" name="username" class="mt-1 w-full rounded-lg border-gray-200 p-2.5 text-sm border"
+              required>
+          </div>
+          <div>
+            <label class="text-sm text-gray-700">Password</label>
+            <input type="password" name="password" class="mt-1 w-full rounded-lg border-gray-200 p-2.5 text-sm border"
+              minlength="6" required>
+          </div>
+          <button type="submit"
+            class="inline-block w-full rounded-lg bg-black px-5 py-3 text-sm font-medium text-white">Create
+            Identity</button>
+        </form>
+        <div id="createIdentityResult" class="mt-4 text-sm"></div>
+      </div>
+
+      <!-- Login Section -->
+      <div class="rounded-lg bg-white p-8 border lg:col-span-3 lg:p-12">
+        <h2 class="text-lg font-medium text-gray-900 mb-4">Login</h2>
+        <form id="loginForm" class="space-y-4">
+          <div>
+            <label class="text-sm text-gray-700">Username</label>
+            <input type="text" name="username" class="mt-1 w-full rounded-lg border-gray-200 p-2.5 text-sm border"
+              required>
+          </div>
+          <div>
+            <label class="text-sm text-gray-700">Password</label>
+            <input type="password" name="password" class="mt-1 w-full rounded-lg border-gray-200 p-2.5 text-sm border"
+              required>
+          </div>
+          <button type="submit"
+            class="inline-block w-full rounded-lg bg-black px-5 py-3 text-sm font-medium text-white">Login</button>
+        </form>
+        <div id="loginResult" class="mt-4 text-sm"></div>
+      </div>
+    </div>
+
+    <div id="userSection" class="hidden">
+      <div class="flex justify-between items-center mb-6">
+        <div>
+          <h2 class="text-lg text-gray-900">DID</h2>
+          <p id="userDid" class="text-2xl -tracking-wider text-gray-600 break-words w-full"></p>
+        </div>
+        <button onclick="logout()"
+          class="rounded-lg border border-red-500 px-3 py-2 text-sm text-red-500 hover:text-white hover:border-white hover:bg-red-500 transition duration-200">Logout</button>
+      </div>
+
+      <div class="flex md:flex-row flex-col gap-4">
+        <div class="flex flex-col gap-4 md:w-2/4">
+          <!-- Credentials Overview Section -->
+          <div class="rounded-lg bg-white p-8 border lg:col-span-3 lg:p-12 w-full">
+            <h2 class="text-lg font-medium text-gray-900 mb-4">Your Credentials</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="credentialsOverview">
+              <!-- Credential cards will be inserted here -->
+            </div>
+          </div>
+
+          <!-- Credential History Section -->
+          <div class="rounded-lg bg-white p-8 border lg:col-span-3 lg:p-12 w-full">
+            <h2 class="text-lg font-medium text-gray-900 mb-4">Credential History</h2>
+            <div class="overflow-x-auto">
+              <table class="min-w-full divide-y divide-gray-200">
+                <thead>
+                  <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Issue
+                      Date
+                    </th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status
+                    </th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody id="credentialHistory" class="bg-white divide-y divide-gray-200">
+                  <!-- History rows will be inserted here -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-4 md:w-2/4">
+          <!-- Verify Credential Section -->
+          <div class="rounded-lg bg-white p-8 border lg:col-span-3 lg:p-12 w-full">
+            <h2 class="text-lg font-medium text-gray-900 mb-4">Verify Credential</h2>
+            <form id="verifyCredentialForm" class="space-y-4">
+              <div>
+                <label class="text-sm text-gray-700">Credential ID</label>
+                <input type="text" name="credentialId"
+                  class="mt-1 w-full rounded-lg border-gray-200 p-2.5 text-sm border" required>
+              </div>
+              <button type="submit"
+                class="inline-block w-full rounded-lg bg-black px-5 py-3 text-sm font-medium text-white">Verify
+                Credential</button>
+            </form>
+            <div id="verifyCredentialResult" class="mt-4 text-sm"></div>
+          </div>
+
+          <!-- Issue Credential Section -->
+          <div class="rounded-lg bg-white p-8 border lg:col-span-3 lg:p-12 w-full">
+            <h2 class="text-lg font-medium text-gray-900 mb-4">Issue Credential</h2>
+            <form id="issueCredentialForm" class="space-y-4">
+              <div>
+                <label class="text-sm text-gray-700">Credential Type</label>
+                <select name="credentialType" id="credentialType"
+                  class="mt-1 w-full rounded-lg border-gray-200 p-2.5 text-sm border" required>
+                  <option value="">Select Type</option>
+                  <option value="KTP">KTP (National ID)</option>
+                  <option value="KK">KK (Family Card)</option>
+                  <option value="StudentCard">Student Card</option>
+                  <option value="DriverLicense">Driver License</option>
+                  <option value="Passport">Passport</option>
+                </select>
+              </div>
+
+              <div id="dynamicFields" class="space-y-4">
+                <!-- Dynamic fields will be inserted here -->
+              </div>
+
+              <button type="submit"
+                class="inline-block w-full rounded-lg bg-black px-5 py-3 text-sm font-medium text-white">Issue
+                Credential</button>
+            </form>
+            <div id="issueCredentialResult" class="mt-4 text-sm"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Modal Components -->
+  <div id="resultModal" class="modal">
+    <div class="modal-content">
+      <span class="close">&times;</span>
+      <div id="modalContent"></div>
+    </div>
+  </div>
+
+  <script>
+    let accessToken = localStorage.getItem('accessToken');
+    let userDid = localStorage.getItem('userDid');
+
+    const modal = document.getElementById("resultModal");
+    const modalContent = document.getElementById("modalContent");
+    const closeBtn = document.getElementsByClassName("close")[0];
+
+    function showModal(content, type = 'success') {
+      modalContent.innerHTML = `
+        <div class="text-center">
+          <div class="mb-4">
+            ${type === 'success'
+          ? '<svg class="w-16 h-16 mx-auto text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>'
+          : '<svg class="w-16 h-16 mx-auto text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>'
+        }
+          </div>
+          <h3 class="text-lg font-medium mb-4">${type === 'success' ? 'Success!' : 'Error!'}</h3>
+          <div class="text-gray-600">
+            ${content}
+          </div>
+          <button onclick="closeModal()" class="mt-6 bg-black text-white px-6 py-2 rounded-lg">Close</button>
+        </div>
+      `;
+      modal.style.display = "block";
+    }
+
+    function closeModal() {
+      modal.style.display = "none";
+    }
+
+    closeBtn.onclick = closeModal;
+    window.onclick = (event) => {
+      if (event.target == modal) {
+        closeModal();
+      }
+    }
+
+    function checkAuth() {
+      if (!accessToken) {
+        alert('Please login first to access this feature');
+        return false;
+      }
+      return true;
+    }
+
+    function updateUI() {
+      const authSection = document.getElementById('authSection');
+      const userSection = document.getElementById('userSection');
+      const userDidSpan = document.getElementById('userDid');
+
+      if (accessToken) {
+        authSection.classList.add('hidden');
+        userSection.classList.remove('hidden');
+        userDidSpan.textContent = userDid || '';
+      } else {
+        authSection.classList.remove('hidden');
+        userSection.classList.add('hidden');
+      }
+    }
+
+    function logout() {
+      accessToken = null;
+      userDid = null;
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('userDid');
+      updateUI();
+    }
+
+    async function handleRequest(url, method, body = null) {
+      try {
+        const headers = {
+          'Content-Type': 'application/json',
+          ...(accessToken && { 'Authorization': `Bearer ${accessToken}` })
+        };
+
+        const response = await fetch(url, {
+          method,
+          headers,
+          ...(body && { body: JSON.stringify(body) })
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || 'Request failed');
+        }
+
+        return await response.json();
+      } catch (error) {
+        throw new Error(error.message);
+      }
+    }
+
+    // Modified credential type selection handling
+    function updateCredentialsOverview() {
+      const overview = document.getElementById('credentialsOverview');
+      overview.innerHTML = '';
+
+      const credentialTypes = Object.keys(credentialFields);
+      credentialTypes.forEach(type => {
+        const hasCredential = userCredentials.some(c => c.type === type);
+
+        const card = document.createElement('div');
+        card.className = 'p-4 border rounded-lg border';
+        card.innerHTML = `
+          <h3 class="font-medium text-gray-900">${type}</h3>
+          <p class="text-sm text-gray-600 mt-1">${hasCredential ? 'Issued' : 'Not Issued'}</p>
+          <div class="mt-2">
+            <button
+              onclick="selectCredentialType('${type}')"
+              class="text-sm px-3 py-1 rounded ${hasCredential ? 'bg-gray-200 text-gray-600 cursor-not-allowed' : 'bg-black text-white'}"
+              ${hasCredential ? 'disabled' : ''}
+            >
+              ${hasCredential ? 'Already Issued' : 'Issue'}
+            </button>
+          </div>
+        `;
+        overview.appendChild(card);
+      });
+
+      // Update credential type select options
+      const credentialTypeSelect = document.getElementById('credentialType');
+      credentialTypeSelect.innerHTML = '<option value="">Select Type</option>';
+      credentialTypes.forEach(type => {
+        const hasCredential = userCredentials.some(c => c.type === type);
+        const option = new Option(type, type);
+        option.disabled = hasCredential;
+        credentialTypeSelect.appendChild(option);
+      });
+    }
+
+    function selectCredentialType(type) {
+      document.getElementById('credentialType').value = type;
+      document.getElementById('credentialType').dispatchEvent(new Event('change'));
+    }
+
+    // Modified issue credential form submission
+    document.getElementById('issueCredentialForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!checkAuth()) return;
+
+      const formData = new FormData(e.target);
+      const credentialType = formData.get('credentialType');
+
+      if (userCredentials.some(c => c.type === credentialType)) {
+        showModal(`You already have a ${credentialType} credential`, 'error');
+        return;
+      }
+
+      const data = {};
+      credentialFields[credentialType].forEach(field => {
+        data[field.name] = formData.get(field.name);
+      });
+
+      try {
+        const response = await handleRequest('/issue-credential', 'POST', {
+          type: credentialType,
+          data: data
+        });
+        userCredentials.push(response);
+        updateCredentialsOverview();
+        updateCredentialHistory();
+        showModal(`Credential issued successfully!<br>ID: ${response.id}`, 'success');
+        e.target.reset();
+        document.getElementById('dynamicFields').innerHTML = '';
+      } catch (error) {
+        showModal(error.message, 'error');
+      }
+    });
+
+    function updateCredentialHistory() {
+      const history = document.getElementById('credentialHistory');
+      history.innerHTML = '';
+
+      userCredentials.forEach(credential => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${credential.type}</td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${new Date(credential.issuanceDate).toLocaleDateString()}</td>
+          <td class="px-6 py-4 whitespace-nowrap">
+            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+              Active
+            </span>
+          </td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+            <button onclick="verifyCredential('${credential.id}')" class="text-indigo-600 hover:text-indigo-900">
+              Verify
+            </button>
+          </td>
+        `;
+        history.appendChild(row);
+      });
+    }
+
+    let userCredentials = [];
+
+    async function loadUserCredentials() {
+      try {
+        const response = await handleRequest('/user-credentials', 'GET');
+        userCredentials = response.credentials;
+        updateCredentialsOverview();
+        updateCredentialHistory();
+      } catch (error) {
+        console.error('Error loading credentials:', error);
+      }
+    }
+
+    async function verifyCredential(credentialId) {
+      try {
+        const response = await handleRequest('/verify-credential', 'POST', { credentialId });
+        document.getElementById('verifyCredentialResult').innerHTML = `
+          <div class="${response.verified ? 'text-green-600' : 'text-red-600'}">
+            Verification ${response.verified ? 'successful' : 'failed'}!
+            <pre class="mt-2 bg-gray-100 p-2 rounded overflow-auto">${JSON.stringify(response.credential, null, 2)}</pre>
+          </div>
+        `;
+      } catch (error) {
+        console.error('Error verifying credential:', error);
+      }
+    }
+
+    // Event Listeners
+    document.getElementById('createIdentityForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const formData = new FormData(e.target);
+      try {
+        const data = await handleRequest('/create-identity', 'POST', {
+          username: formData.get('username'),
+          password: formData.get('password')
+        });
+        showModal(`Identity created successfully!<br>DID: ${data.did}`, 'success');
+        e.target.reset();
+      } catch (error) {
+        showModal(error.message, 'error');
+      }
+    });
+
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const formData = new FormData(e.target);
+      try {
+        const data = await handleRequest('/login', 'POST', {
+          username: formData.get('username'),
+          password: formData.get('password')
+        });
+        accessToken = data.token;
+        userDid = data.did;
+        localStorage.setItem('accessToken', accessToken);
+        localStorage.setItem('userDid', userDid);
+        updateUI();
+        loadUserCredentials(); // Load credentials after successful login
+        e.target.reset();
+      } catch (error) {
+        document.getElementById('loginResult').innerHTML =
+          `<div class="text-red-600">Error: ${error.message}</div>`;
+      }
+    });
+
+    const credentialFields = {
+      KTP: [
+        { name: 'nik', label: 'NIK', type: 'text' },
+        { name: 'fullName', label: 'Full Name', type: 'text' },
+        { name: 'birthPlace', label: 'Birth Place', type: 'text' },
+        { name: 'birthDate', label: 'Birth Date', type: 'date' },
+        { name: 'gender', label: 'Gender', type: 'select', options: ['Male', 'Female'] },
+        { name: 'address', label: 'Address', type: 'textarea' },
+        { name: 'religion', label: 'Religion', type: 'text' },
+        { name: 'maritalStatus', label: 'Marital Status', type: 'select', options: ['Single', 'Married', 'Divorced', 'Widowed'] },
+        { name: 'occupation', label: 'Occupation', type: 'text' },
+        { name: 'nationality', label: 'Nationality', type: 'text' },
+      ],
+      KK: [
+        { name: 'noKK', label: 'Family Card Number', type: 'text' },
+        { name: 'headOfFamily', label: 'Head of Family', type: 'text' },
+        { name: 'address', label: 'Address', type: 'textarea' },
+        { name: 'familyMembers', label: 'Number of Family Members', type: 'number' },
+      ],
+      StudentCard: [
+        { name: 'studentId', label: 'Student ID', type: 'text' },
+        { name: 'fullName', label: 'Full Name', type: 'text' },
+        { name: 'faculty', label: 'Faculty', type: 'text' },
+        { name: 'major', label: 'Major', type: 'text' },
+        { name: 'year', label: 'Entry Year', type: 'number' },
+      ],
+      DriverLicense: [
+        { name: 'licenseNumber', label: 'License Number', type: 'text' },
+        { name: 'fullName', label: 'Full Name', type: 'text' },
+        { name: 'licenseType', label: 'License Type', type: 'select', options: ['A', 'B1', 'B2', 'C'] },
+        { name: 'validUntil', label: 'Valid Until', type: 'date' },
+      ],
+      Passport: [
+        { name: 'passportNumber', label: 'Passport Number', type: 'text' },
+        { name: 'fullName', label: 'Full Name', type: 'text' },
+        { name: 'nationality', label: 'Nationality', type: 'text' },
+        { name: 'issueDate', label: 'Issue Date', type: 'date' },
+        { name: 'expiryDate', label: 'Expiry Date', type: 'date' },
+      ]
+    };
+
+    function createField(field) {
+      const div = document.createElement('div');
+      div.className = 'fade-enter';
+
+      let input;
+      if (field.type === 'textarea') {
+        input = `<textarea name="${field.name}" class="mt-1 w-full rounded-lg border-gray-200 p-2.5 text-sm border" required></textarea>`;
+      } else if (field.type === 'select') {
+        const options = field.options.map(opt =>
+          `<option value="${opt}">${opt}</option>`
+        ).join('');
+        input = `<select name="${field.name}" class="mt-1 w-full rounded-lg border-gray-200 p-2.5 text-sm border" required>${options}</select>`;
+      } else {
+        input = `<input type="${field.type}" name="${field.name}" class="mt-1 w-full rounded-lg border-gray-200 p-2.5 text-sm border" required>`;
+      }
+
+      div.innerHTML = `
+                <label class="text-sm text-gray-700">${field.label}</label>
+                ${input}
+            `;
+
+      setTimeout(() => div.classList.add('fade-enter-active'), 10);
+      return div;
+    }
+
+    document.getElementById('credentialType').addEventListener('change', function (e) {
+      const dynamicFields = document.getElementById('dynamicFields');
+      dynamicFields.innerHTML = '';
+
+      const selectedType = e.target.value;
+      if (selectedType && credentialFields[selectedType]) {
+        credentialFields[selectedType].forEach(field => {
+          dynamicFields.appendChild(createField(field));
+        });
+      }
+    });
+
+    // Modified event listeners with authentication checks
+    document.getElementById('issueCredentialForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!checkAuth()) return;
+
+      const formData = new FormData(e.target);
+      const credentialType = formData.get('credentialType');
+
+      if (userCredentials.some(c => c.type === credentialType)) {
+        document.getElementById('issueCredentialResult').innerHTML =
+          `<div class="text-red-600">Error: You already have a ${credentialType} credential</div>`;
+        return;
+      }
+
+      const data = {};
+      credentialFields[credentialType].forEach(field => {
+        data[field.name] = formData.get(field.name);
+      });
+
+      try {
+        const response = await handleRequest('/issue-credential', 'POST', {
+          type: credentialType,
+          data: data
+        });
+        userCredentials.push(response);
+        updateCredentialsOverview();
+        updateCredentialHistory();
+        document.getElementById('issueCredentialResult').innerHTML =
+          `<div class="text-green-600">Credential issued! ID: ${response.id}</div>`;
+        e.target.reset();
+        document.getElementById('dynamicFields').innerHTML = '';
+      } catch (error) {
+        document.getElementById('issueCredentialResult').innerHTML =
+          `<div class="text-red-600">Error: ${error.message}</div>`;
+      }
+    });
+
+    document.getElementById('verifyCredentialForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!checkAuth()) return;
+
+      const formData = new FormData(e.target);
+      try {
+        const data = await handleRequest('/verify-credential', 'POST', {
+          credentialId: formData.get('credentialId')
+        });
+
+        showModal(`
+          <div class="${data.verified ? 'text-green-600' : 'text-red-600'}">
+            Verification ${data.verified ? 'successful' : 'failed'}!
+          </div>
+          <pre class="mt-4 bg-gray-100 p-4 rounded overflow-auto text-left text-sm">${JSON.stringify(data.credential, null, 2)}</pre>
+        `, data.verified ? 'success' : 'error');
+      } catch (error) {
+        showModal(error.message, 'error');
+      }
+    });
+
+    updateUI();
+    if (accessToken) {
+      loadUserCredentials();
+    }
+  </script>
+</body>
+
+</html>
