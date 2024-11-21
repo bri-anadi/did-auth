@@ -19,3 +19,5 @@ Here are some key points about Decentralized Identity:
 1. Fork this repo
 2. Edit anymore code
 3. Push code and pull request
+
+> Note: THIS APP EXPLAIN, NOT REAL APP DECENTRALIZED IDENTITY, WE USE LOCALSTORAGE AND NOT INTEGRATION TO WALLET.
