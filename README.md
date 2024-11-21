@@ -1,4 +1,5 @@
 # Digital Identity Management
+![image](https://github.com/user-attachments/assets/a65216e8-8839-4fad-9200-ea8adc426554)
 
 ## What Decentralized Identity?
 Decentralized Identity (DID) is a concept of digital identity management that does not rely on centralized third parties (such as governments, banks, or large tech companies) to verify a person's or entity's identity. Instead, the identity is managed by the individual or entity itself using blockchain or other distributed technologies.
